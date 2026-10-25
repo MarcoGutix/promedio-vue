@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Promedio de Notas</title>
+
+  <!-- Bootstrap 5 por CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Vue.js por CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <style>
+    body {
+      background-color: #eef2f5;
+    }
+    .encabezado {
+      background-color: #198754;
+      color: white;
+      border-radius: 10px 10px 0 0;
+    }
+    .card {
+      border: none;
+      border-radius: 10px;
+    }
+    .nota-box {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+    }
+    .promedio-grande {
+      font-size: 2.8rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app" class="container my-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-7 col-lg-5">
+
+        <div class="card shadow-sm">
+          <!-- Encabezado -->
+          <div class="encabezado p-3 text-center">
+            <h4 class="mb-0">Calculadora de Promedio</h4>
+            <small>Bloques 20% c/u · Proyecto final 40%</small>
+          </div>
+
+          <div class="card-body p-4">
+
+            <!-- Promedio en tiempo real -->
+            <div class="text-center mb-4">
+              <small class="text-muted">Promedio en tiempo real</small>
+              <h3 class="text-success mb-0">{{ promedio }}</h3>
+              <small class="text-muted">{{ notasValidas }}/4 notas válidas</small>
+            </div>
+
+            <!-- Notas (v-for) -->
+            <div class="nota-box p-3 mb-3" v-for="nota in notas" :key="nota.nombre">
+              <div class="d-flex justify-content-between mb-2">
+                <label class="fw-semibold">{{ nota.nombre }}</label>
+                <span class="badge bg-success">{{ nota.porcentaje }}%</span>
+              </div>
+              <div class="input-group has-validation">
+                <input type="number" step="0.1" class="form-control"
+                       :class="estadoInput(nota.valor)"
+                       v-model="nota.valor" placeholder="0 - 100">
+                <span class="input-group-text">/ 100</span>
+                <div class="invalid-feedback">{{ errorNota(nota.valor) }}</div>
+              </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="d-grid gap-2 mt-4">
+              <button class="btn btn-success" @click="calcular">Calcular promedio final</button>
+              <button class="btn btn-outline-secondary" @click="limpiar">Limpiar</button>
+            </div>
+
+            <div class="alert alert-danger mt-3" v-if="mensajeError">
+              {{ mensajeError }}
+            </div>
+
+            <!-- Componente de Vue con el resultado -->
+            <resultado-final v-if="mostrar" :promedio="promedio" :notas="notas"></resultado-final>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    const app = createApp({
+      data() {
+        return {
+          notas: [
+            { nombre: 'Bloque 1', porcentaje: 20, valor: '' },
+            { nombre: 'Bloque 2', porcentaje: 20, valor: '' },
+            { nombre: 'Bloque 3', porcentaje: 20, valor: '' },
+            { nombre: 'Proyecto Final', porcentaje: 40, valor: '' }
+          ],
+          mostrar: false,
+          mensajeError: ''
+        }
+      },
+      computed: {
+        // Se calcula automaticamente cada vez que cambia una nota
+        promedio() {
+          let total = 0;
+          for (let nota of this.notas) {
+            if (nota.valor !== '' && !this.errorNota(nota.valor)) {
+              total += Number(nota.valor) * (nota.porcentaje / 100);
+            }
+          }
+          return total.toFixed(2);
+        },
+        // Cuenta cuantas notas estan bien ingresadas
+        notasValidas() {
+          return this.notas.filter(n => n.valor !== '' && !this.errorNota(n.valor)).length;
+        }
+      },
+      methods: {
+        // Devuelve un mensaje si la nota no es valida
+        errorNota(valor) {
+          if (valor === '') return '';
+          if (isNaN(valor)) return 'Solo se permiten numeros.';
+          if (valor < 0 || valor > 100) return 'La nota debe estar entre 0 y 100.';
+          return '';
+        },
+        // Pone el input en verde o rojo
+        estadoInput(valor) {
+          if (valor === '') return '';
+          return this.errorNota(valor) ? 'is-invalid' : 'is-valid';
+        },
+        calcular() {
+          this.mostrar = false;
+          this.mensajeError = '';
+
+          for (let nota of this.notas) {
+            if (nota.valor === '') {
+              this.mensajeError = 'Falta ingresar la nota de ' + nota.nombre + '.';
+              return;
+            }
+            if (this.errorNota(nota.valor)) {
+              this.mensajeError = 'Revisa la nota de ' + nota.nombre + ': ' + this.errorNota(nota.valor);
+              return;
+            }
+          }
+
+          this.mostrar = true;
+        },
+        limpiar() {
+          for (let nota of this.notas) {
+            nota.valor = '';
+          }
+          this.mostrar = false;
+          this.mensajeError = '';
+        }
+      }
+    });
+
+    // Componente que muestra el promedio final y el detalle
+    app.component('resultado-final', {
+      props: ['promedio', 'notas'],
+      template: `
+        <div class="mt-4 p-3 border rounded text-center"
+             :class="promedio >= 60 ? 'border-success' : 'border-danger'">
+          <small class="text-muted">Promedio final</small>
+          <div class="promedio-grande" :class="promedio >= 60 ? 'text-success' : 'text-danger'">
+            {{ promedio }}
+          </div>
+          <span class="badge mb-3" :class="promedio >= 60 ? 'bg-success' : 'bg-danger'">
+            {{ promedio >= 60 ? 'Aprobado' : 'Reprobado' }}
+          </span>
+
+          <div class="progress mb-1" style="height: 8px;">
+            <div class="progress-bar" :class="promedio >= 60 ? 'bg-success' : 'bg-danger'"
+                 :style="{ width: promedio + '%' }"></div>
+          </div>
+          <small class="text-muted">Nota mínima de aprobación: 60</small>
+
+          <table class="table table-sm mt-3 mb-0 text-start">
+            <thead>
+              <tr><th>Evaluación</th><th>Nota</th><th>Porcentaje</th><th>Aporte</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="nota in notas" :key="nota.nombre">
+                <td>{{ nota.nombre }}</td>
+                <td>{{ Number(nota.valor).toFixed(2) }}</td>
+                <td>{{ nota.porcentaje }}%</td>
+                <td>{{ (nota.valor * nota.porcentaje / 100).toFixed(2) }}</td>
+              </tr>
+              <tr class="fw-bold">
+                <td colspan="3">Total</td>
+                <td>{{ promedio }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `
+    });
+
+    app.mount('#app');
+  </script>
+
+</body>
+</html>
